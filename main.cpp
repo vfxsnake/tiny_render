@@ -3,7 +3,9 @@
 #include <cstdlib>
 #include <ctime>
 #include <chrono>
+#include <tuple>
 #include "tgaimage.h"
+#include "model.h"
 
 
 constexpr TGAColor white   = {255, 255, 255, 255}; // attention, BGRA order
@@ -36,44 +38,62 @@ private:
 
 void plot_line(int a_x, int a_y, int b_x, int b_y, TGAImage& frame_buffer, TGAColor color)
 {
-    if (a_x > b_x)
-    {
+    bool steep = std::abs(a_x-b_x) < std::abs(a_y-b_y);
+    if (steep) { // if the line is steep, we transpose the image
+        std::swap(a_x, a_y);
+        std::swap(b_x, b_y);
+    }
+    if (a_x>b_x) { // make it left−to−right
         std::swap(a_x, b_x);
         std::swap(a_y, b_y);
     }
-    
-    int x_distance = std::abs(a_x - b_x);
-    int y_distance = std::abs(a_y - b_y);
-    int max_length = std::max(x_distance, y_distance);
-    int x_step = (static_cast<float>(x_distance) / static_cast<float>(max_length));
-    int y_step = (static_cast<float>(y_distance) / static_cast<float>(max_length));
-
-    for (uint32_t step=0; step < max_length; step++)
+    int y = a_y;
+    int ierror = 0;
+    for (int x=a_x; x<=b_x; x++) 
     {
-        // x_position  = point_a[0] + step * (step_size * step)
-        int position_x = a_x + std::roundf(step * x_step);
-        int position_y = a_y + std::roundf(step * y_step);
-        
-        frame_buffer.set(position_x, position_y, color);   
+        if (steep) // if transposed, de−transpose
+            frame_buffer.set(y, x, color);
+        else
+            frame_buffer.set(x, y, color);
+        ierror += 2 * std::abs(b_y-a_y);
+        if (ierror > b_x - a_x) {
+            y += b_y > a_y ? 1 : -1;
+            ierror -= 2 * (b_x-a_x);
+        }
     }
 }
 
 
-int main(int argc, char** argv) {
-    constexpr int width  = 64;
-    constexpr int height = 64;
-    TGAImage framebuffer(width, height, TGAImage::RGB);
+std::tuple<int, int> project(Vec3f vec3, float offset_x, float offset_y, int width, int height)
+{
+    return {
+        round((vec3.x + offset_x) * width * 0.5),
+        round((vec3.y + offset_y) * height * 0.5)
+    };
+}
 
-    int ax =  7, ay =  3;
-    int bx = 12, by = 37;
-    int cx = 62, cy = 53;
+int main(int argc, char** argv) {
+    constexpr int width  = 800;
+    constexpr int height = 800;
+    TGAImage framebuffer(width, height, TGAImage::RGB);
+    std::string model_path = "../obj/diablo3_pose/diablo3_pose.obj";
+    Model model = loadModel(model_path);
 
     std::srand(std::time({}));
     TimeTracker timer = TimeTracker("draw lines method");
-    for (int i=0; i<(1<<24); i++) {
-        int ax = rand()%width, ay = rand()%height;
-        int bx = rand()%width, by = rand()%height;
-        plot_line(ax, ay, bx, by, framebuffer, {static_cast<uint8_t>(rand()%255), static_cast<uint8_t>(rand()%255), static_cast<uint8_t>(rand()%255), static_cast<uint8_t>(rand()%255) });
+    for (int i=0; i< model.numberOfFaces(); i++) 
+    {
+        Vec3f a = model.getVertexFromFace(i, 0);
+        Vec3f b = model.getVertexFromFace(i, 1);
+        Vec3f c = model.getVertexFromFace(i, 2);
+        auto [ax, ay] = project(a, 1.0, 1.0, width, height);
+        auto [bx, by] = project(b, 1.0, 1.0, width, height);
+        auto [cx, cy] = project(c, 1.0, 1.0, width, height);
+
+        plot_line(ax, ay, bx, by, framebuffer, red);
+        plot_line(bx, by, cx, cy, framebuffer, green);
+        plot_line(cx, cy, ax, ay, framebuffer, blue);
+
     }
 
     framebuffer.write_tga_file("framebuffer.tga");

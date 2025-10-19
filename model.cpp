@@ -18,15 +18,17 @@ void Model::addFace(std::array<int, 3> face)
 
 Vec3f Model::getVertex(int index)const
 {
-    assert(index > 0 && index < _vertices.size());
+    assert(index >= 0 && index < _vertices.size());
     return _vertices[index];
 }
 
 Vec3f Model::getVertexFromFace(int face_index, int relative_index_in_face) const
 {
-    assert(face_index > 0 && face_index < _faces.size());
-    assert(relative_index_in_face > 0 && relative_index_in_face < 3);
-    return _faces[face_index][relative_index_in_face];
+    assert(face_index >= 0 && face_index < _faces.size());
+    assert(relative_index_in_face >= 0 && relative_index_in_face < 3);
+    int vertex_index = _faces[face_index][relative_index_in_face];
+    Vec3f out_vertex = getVertex(vertex_index);
+    return out_vertex;
 }
 
 int Model::numberOfVertices() const
@@ -71,6 +73,6 @@ Model loadModel(std::string file_name)
             model.addFace(face_vertex_array);
         }
     }
-    std::cout << "# v# " << model.numberOfVertices() << " f# "  << model.numberOfFaces() << std::endl;
+    std::cout << "Model loaded: " << file_name <<" v# " << model.numberOfVertices() << " f# "  << model.numberOfFaces() << std::endl;
     return model;
 }
