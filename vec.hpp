@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <array>
 #include <cassert>
 /*
     base template structure for multi-dimensional vectors, mainly for graphic use
@@ -10,7 +11,7 @@ template <typename T, int n>
 struct Vec
 {
     static_assert(n > 0, "vector dimension must be positive");
-    std::vector<T, n> components;
+    std::array<T, n> components;
 
     // default constructor:
     Vec()
@@ -25,14 +26,14 @@ struct Vec
 
     T& operator[](const int index)
     {
-        assert(index >=0 && index < n, "index out of range");
-        return vec[index];
+        assert(index >=0 && index < n);
+        return components[index];
     }
 
     const T& operator[](const int index) const
     {
-        assert(index >=0 && index < n, "index out of range");
-        return vec[index];
+        assert(index >=0 && index < n);
+        return components[index];
     }
 
 };
@@ -62,14 +63,14 @@ struct Vec<T,2>
 
     T& operator[](const int index)
     {
-        assert(index >=0 && index < n, "index out of range");
-        return vec[index];
+        assert(index >=0 && index < 2);
+        return components[index];
     }
 
     const T& operator[](const int index) const
     {
-        assert(index >=0 && index < n, "index out of range");
-        return vec[index];
+        assert(index >=0 && index < 2);
+        return components[index];
     }
 };
 
@@ -97,16 +98,16 @@ struct Vec<T,3>
     Vec(T _x, T _y, T _z) : x(_x), y(_y), z(_z) { }
 
 
-    T& operator[](const int index)
+    T& operator[](int index)
     {
-        assert(index >=0 && index < n, "index out of range");
-        return vec[index];
+        assert(index >=0 && index < 3, "index out of range");
+        return components[index];
     }
 
     const T& operator[](const int index) const
     {
-        assert(index >=0 && index < n, "index out of range");
-        return vec[index];
+        assert(index >=0 && index < 3);
+        return components[index];
     }
 };
 
@@ -130,19 +131,19 @@ struct Vec<T,4>
         std::fill(components.begin(), components.end(), value);
     }
 
-    Vec(T _x, T _y, T _z, T_w) : x(_x), y(_y), z(_z), w(_w) { }
+    Vec(T _x, T _y, T _z, T _w) : x(_x), y(_y), z(_z), w(_w) { }
 
 
     T& operator[](const int index)
     {
-        assert(index >=0 && index < n, "index out of range");
-        return vec[index];
+        assert(index >=0 && index < 4);
+        return components[index];
     }
 
     const T& operator[](const int index) const
     {
-        assert(index >=0 && index < n, "index out of range");
-        return vec[index];
+        assert(index >=0 && index < 4);
+        return components[index];
     }
 };
 
