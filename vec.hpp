@@ -100,7 +100,7 @@ struct Vec<T,3>
 
     T& operator[](int index)
     {
-        assert(index >=0 && index < 3, "index out of range");
+        assert(index >=0 && index < 3);
         return components[index];
     }
 

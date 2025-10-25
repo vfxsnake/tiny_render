@@ -4,6 +4,7 @@
 #include <ctime>
 #include <chrono>
 #include <tuple>
+#include <algorithm>
 #include "tgaimage.h"
 #include "model.h"
 
@@ -72,31 +73,118 @@ std::tuple<int, int> project(Vec3f vec3, float offset_x, float offset_y, int wid
     };
 }
 
-int main(int argc, char** argv) {
-    constexpr int width  = 800;
-    constexpr int height = 800;
-    TGAImage framebuffer(width, height, TGAImage::RGB);
-    std::string model_path = "../obj/diablo3_pose/diablo3_pose.obj";
-    Model model = loadModel(model_path);
 
-    std::srand(std::time({}));
-    TimeTracker timer = TimeTracker("draw lines method");
-    for (int i=0; i< model.numberOfFaces(); i++) 
+/*
+    will return true if there is an intersection point of the segment and the y_val
+    * will return false if there is not intersection, 
+    * will return false if the segments y's values are the same of y_val. as it is the same segment. 
+*/
+bool intersect_segment(int y_val, int ax, int ay, int bx, int by, int& x_out)
+{
+    if (y_val < std::min({ay, by}) || y_val > std::max(ay, by))
     {
-        Vec3f a = model.getVertexFromFace(i, 0);
-        Vec3f b = model.getVertexFromFace(i, 1);
-        Vec3f c = model.getVertexFromFace(i, 2);
-        auto [ax, ay] = project(a, 1.0, 1.0, width, height);
-        auto [bx, by] = project(b, 1.0, 1.0, width, height);
-        auto [cx, cy] = project(c, 1.0, 1.0, width, height);
-
-        plot_line(ax, ay, bx, by, framebuffer, red);
-        plot_line(bx, by, cx, cy, framebuffer, green);
-        plot_line(cx, cy, ax, ay, framebuffer, blue);
-
+        x_out = ax;
+        return false;
+    }
+    int delta_x = bx - ax;
+    // if line a constant along y (parallel to y axis)
+    if (delta_x == 0)
+    {
+        x_out = ax;  // intersects at ax, y_val
+        return true; 
     }
 
-    framebuffer.write_tga_file("framebuffer.tga");
+    int delta_y = by - ay;
+    if (delta_y == 0)
+    {
+        int& x_out = ax;
+        return false;
+    }
+
+    // get the curve function elements y = m(x) + B;
+    float m = delta_y / float(delta_x);
+
+    int B = round(float(ay) - (m * float(ax)));
+
+    float x = (y_val - B) / m;
+    
+    x_out = round(x);
+    int min_x = std::min(ax, bx);
+    int max_x = std::max(ax, bx);
+    if (x_out >= min_x && x_out <= max_x)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+
+void rasterize_triangle(int ax, int ay, int bx, int by, int cx, int cy, TGAImage& frame_buffer, TGAColor color)
+{
+    int min_x = std::min({ax, bx, cx});
+    int max_x = std::max({ax, bx, cx});
+    int min_y = std::min({ay, by, cy});
+    int max_y = std::max({ay, by, cy});
+
+
+    for (int y = min_y; y <= max_y ; y++)
+    {
+        // stores the x cordinates of the intersected points
+        std::vector<int> x_cords;
+        int x_cord = 0;
+        if (intersect_segment(y, ax, ay, bx, by, x_cord))
+        {
+            x_cords.emplace_back(x_cord);
+        }
+        
+        if (intersect_segment(y, bx, by, cx, cy, x_cord))
+        {
+            x_cords.emplace_back(x_cord);
+        }
+        
+        if (intersect_segment(y, cx, cy, ax, ay, x_cord))
+        {
+            x_cords.emplace_back(x_cord);
+        }
+
+        if (x_cords.size() <= 1)
+        {
+            continue;
+        }
+
+        auto [_min, _max] = std::minmax_element(x_cords.begin(), x_cords.end());
+        for (int x = *_min; x <= *_max; x++)
+        {
+            frame_buffer.set(x, y, color);
+        }
+
+    }
+}
+
+
+
+
+void triangle(int ax, int ay, int bx, int by, int cx, int cy, TGAImage &framebuffer, TGAColor color) 
+{
+    rasterize_triangle(ax, ay, bx, by, cx, cy, framebuffer, color);
+    // plot_line(ax, ay, bx, by, framebuffer, white);
+    // plot_line(bx, by, cx, cy, framebuffer, white);
+    // plot_line(cx, cy, ax, ay, framebuffer, white);
+}
+
+
+
+int width = 128;
+int height = 128;
+
+int main(int argc, char** argv)
+{
+    TGAImage framebuffer(width, height, TGAImage::RGB);
+    triangle(  7, 45, 35, 100, 45,  60, framebuffer, red);
+    triangle(120, 35, 90,   5, 45, 110, framebuffer, blue);
+    triangle(115, 83, 80,  90, 85, 120, framebuffer, green);
+    framebuffer.write_tga_file("../framebuffer.tga");
     return 0;
 }
 
